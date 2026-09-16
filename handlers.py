@@ -42,6 +42,12 @@ async def user_tasks(user_id):
         tasks_list = await cursor.fetchall()
         tasks_arr = [task[0] for task in tasks_list]
         return tasks_arr
+
+async def delete_task(user_id, task):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("""DELETE FROM users WHERE user_is = ? AND task = ?
+                """, (user_id, task))
+        await db.commit()
 # ---
 
 class Form(StatesGroup):
@@ -63,4 +69,5 @@ async def task_saving(message: Message, state:FSMContext):
 
     tasks = await user_tasks(user_id=user_id)
     answr_txt = "".join([f"• {task}" for task in tasks])
-    await message.answer(f"Отлично! Твоё дело записано. Теперь твой список дел выглядит так:\n{tasks}")
+    await message.answer(f"Отлично! Твоё дело записано. Теперь твой список дел выглядит так:\n{answr_txt}")
+
