@@ -1,12 +1,13 @@
 import aiosqlite
-from aiogram import Router, html
-from aiogram.filters import CommandStart
-from aiogram.types import Message
-from aiogram.filters import CommandStart
+from aiogram import Router, html, F
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime
+
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 rt= Router()
 
@@ -45,13 +46,14 @@ async def user_tasks(user_id):
 
 async def delete_task(user_id, task):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("""DELETE FROM users WHERE user_is = ? AND task = ?
+        await db.execute("""DELETE FROM users WHERE user_id = ? AND task = ?
                 """, (user_id, task))
         await db.commit()
 # ---
 
 class Form(StatesGroup):
     task = State()
+    clearing = State()
 
 @rt.message(CommandStart())
 async def command_start_handler(message: Message, state: FSMContext) -> None:
@@ -71,3 +73,34 @@ async def task_saving(message: Message, state:FSMContext):
     answr_txt = "".join([f"• {task}" for task in tasks])
     await message.answer(f"Отлично! Твоё дело записано. Теперь твой список дел выглядит так:\n{answr_txt}")
 
+@rt.message(Command("delete"))
+async def task_saving(message: Message, state: FSMContext):
+    await state.set_state(Form.clearing)
+    tasks = await user_tasks(message.from_user.id)
+    builder = InlineKeyboardBuilder()
+    for task in tasks:
+        builder.button(text=task, callback_data=str(task))
+    builder.adjust(3, 2)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=builder.export())
+    await message.answer("Some text here", reply_markup=keyboard)
+
+@rt.callback_query()
+async def start_remove_task(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('')
+    task = callback.data
+    await state.update_data(clearing=task)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Да", callback_data="yes")],
+        [InlineKeyboardButton(text="Нет", callback_data="no")],
+    ]
+    )
+
+    await callback.message.edit_text(f"Вы хотите удалить {task}?", reply_markup=keyboard)
+
+@rt.callback_query(F.data=="yes")
+async def remove_task(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('')
+    await callback.message.edit_text("Происходит удаление...")
+    task = await state.get_data()
+    await delete_task(user_id=callback.from_user.id, task=task)
+    await callback.message.edit_text(f"{task} было удалено!")

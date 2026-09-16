@@ -2,7 +2,6 @@ import os
 import asyncio
 from dotenv import load_dotenv
 import logging
-import aiosqlite
 
 from handlers import rt
 from aiogram import Bot, Dispatcher
