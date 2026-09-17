@@ -1,3 +1,5 @@
+import logging
+
 import aiosqlite
 from aiogram import Router, html, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -54,9 +56,11 @@ async def delete_task(user_id, task):
 class Form(StatesGroup):
     task = State()
     clearing = State()
+    set_time = State()
 
 @rt.message(CommandStart())
 async def command_start_handler(message: Message, state: FSMContext) -> None:
+    await init_db()
     await state.set_state(Form.task)
     await message.answer(f"Привет, {html.bold(message.from_user.full_name)}! "
                          f"\nНапиши название дела, с регулярным выполнением которого у тебя возникают трудности.")
@@ -67,11 +71,15 @@ async def task_saving(message: Message, state:FSMContext):
     user_id = message.from_user.id
 
     await add_user_task(user_id=user_id, task=task_text)
-    await state.clear()
+    await state.clear() #state.set_state(Form.set_time)
 
     tasks = await user_tasks(user_id=user_id)
-    answr_txt = "".join([f"• {task}" for task in tasks])
+    answr_txt = "".join([f"\n• {task}" for task in tasks])
     await message.answer(f"Отлично! Твоё дело записано. Теперь твой список дел выглядит так:\n{answr_txt}")
+
+@rt.message(Form.set_time)
+async def set_time_div(message: Message, state: FSMContext): # выбор дела списком или только для того, которое устанавливаем? а лучше две отдельные функции, чтобы можно было позже редактировать div
+    pass
 
 @rt.message(Command("delete"))
 async def task_saving(message: Message, state: FSMContext):
@@ -84,8 +92,17 @@ async def task_saving(message: Message, state: FSMContext):
     keyboard = InlineKeyboardMarkup(inline_keyboard=builder.export())
     await message.answer("Some text here", reply_markup=keyboard)
 
+@rt.callback_query(F.data=="yes")
+async def remove_task(callback: CallbackQuery, state: FSMContext): # и тут
+    await callback.answer('')
+    await callback.message.edit_text("Происходит удаление...")
+    task = await state.get_data()
+    task = task['clearing']
+    await delete_task(user_id=callback.from_user.id, task=task)
+    await callback.message.edit_text(f"{task} было удалено!")
+
 @rt.callback_query()
-async def start_remove_task(callback: CallbackQuery, state: FSMContext):
+async def start_remove_task(callback: CallbackQuery, state: FSMContext): # починить одинаковые task тут
     await callback.answer('')
     task = callback.data
     await state.update_data(clearing=task)
@@ -94,13 +111,4 @@ async def start_remove_task(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Нет", callback_data="no")],
     ]
     )
-
     await callback.message.edit_text(f"Вы хотите удалить {task}?", reply_markup=keyboard)
-
-@rt.callback_query(F.data=="yes")
-async def remove_task(callback: CallbackQuery, state: FSMContext):
-    await callback.answer('')
-    await callback.message.edit_text("Происходит удаление...")
-    task = await state.get_data()
-    await delete_task(user_id=callback.from_user.id, task=task)
-    await callback.message.edit_text(f"{task} было удалено!")
