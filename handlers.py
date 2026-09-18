@@ -96,19 +96,19 @@ async def task_saving(message: Message, state: FSMContext):
 async def remove_task(callback: CallbackQuery, state: FSMContext): # и тут
     await callback.answer('')
     await callback.message.edit_text("Происходит удаление...")
-    task = await state.get_data()
-    task = task['clearing']
-    await delete_task(user_id=callback.from_user.id, task=task)
-    await callback.message.edit_text(f"{task} было удалено!")
+    rm_task = await state.get_data()
+    rm_task = rm_task['clearing']
+    await delete_task(user_id=callback.from_user.id, task=rm_task)
+    await callback.message.edit_text(f"{rm_task} было удалено!")
 
 @rt.callback_query()
 async def start_remove_task(callback: CallbackQuery, state: FSMContext): # починить одинаковые task тут
     await callback.answer('')
-    task = callback.data
-    await state.update_data(clearing=task)
+    spec_task = callback.data
+    await state.update_data(clearing=spec_task)
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Да", callback_data="yes")],
         [InlineKeyboardButton(text="Нет", callback_data="no")],
     ]
     )
-    await callback.message.edit_text(f"Вы хотите удалить {task}?", reply_markup=keyboard)
+    await callback.message.edit_text(f"Вы хотите удалить {spec_task}?", reply_markup=keyboard)
