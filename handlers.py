@@ -79,6 +79,7 @@ async def task_saving(message: Message, state:FSMContext):
 
 @rt.message(Form.set_time)
 async def set_time_div(message: Message, state: FSMContext): # выбор дела списком или только для того, которое устанавливаем? а лучше две отдельные функции, чтобы можно было позже редактировать div
+    await state.set_state(Form.set_time)
     pass
 
 @rt.message(Command("delete"))
