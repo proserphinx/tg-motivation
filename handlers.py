@@ -90,7 +90,7 @@ async def task_saving(message: Message, state: FSMContext):
         builder.button(text=task, callback_data=str(task))
     builder.adjust(3, 2)
     keyboard = InlineKeyboardMarkup(inline_keyboard=builder.export())
-    await message.answer("Some text here", reply_markup=keyboard)
+    await message.answer("Выберите дело для удаления:", reply_markup=keyboard)
 
 @rt.callback_query(F.data=="yes")
 async def remove_task(callback: CallbackQuery, state: FSMContext): # и тут
